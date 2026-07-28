@@ -240,12 +240,20 @@ logging.level.GroovyScript.my-script=DEBUG
 
 ### SecureGroovyScriptExecutor
 
-3단계 보안 레이어:
+#### 메서드 종류
+
+| 메서드 | DB 접근 | 용도 |
+|--------|---------|------|
+| `executeSecure()` | ❌ 차단 | 일반 보안 스크립트 |
+| `executeSecureWithDb()` | ✅ 허용 | DB 연동 보안 스크립트 |
+
+#### 4단계 보안 레이어
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 1: 소스코드 사전 검증 (정규식)                          │
 │  - System.exit, Runtime.exec, File, URL 등 패턴 차단         │
+│  - DB 접근 차단 (executeSecure 사용 시)                       │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 2: Import 제한 (ImportCustomizer)                    │
 │  - 허용: java.util.*, java.math.*, java.time.*             │
@@ -254,19 +262,23 @@ logging.level.GroovyScript.my-script=DEBUG
 │  Layer 3: AST 제한 (SecureASTCustomizer)                    │
 │  - 허용된 연산자만 사용 가능                                   │
 │  - 차단된 리시버 호출 불가                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 4: 런타임 바인딩 제어                                  │
+│  - db 변수: executeSecureWithDb() 사용 시에만 바인딩          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### 차단되는 작업
 
-| 위협 | 예시 코드 | 결과 |
-|------|----------|------|
-| 시스템 종료 | `System.exit(0)` | ❌ 차단 |
-| 프로세스 실행 | `"cmd".execute()` | ❌ 차단 |
-| 파일 접근 | `new File("/etc/passwd")` | ❌ 차단 |
-| 네트워크 | `new URL("http://...")` | ❌ 차단 |
-| 리플렉션 | `Class.forName("...")` | ❌ 차단 |
-| 외부 의존성 | `@Grab('...')` | ❌ 차단 |
+| 위협 | 예시 코드 | executeSecure | executeSecureWithDb |
+|------|----------|:-------------:|:-------------------:|
+| 시스템 종료 | `System.exit(0)` | ❌ 차단 | ❌ 차단 |
+| 프로세스 실행 | `"cmd".execute()` | ❌ 차단 | ❌ 차단 |
+| 파일 접근 | `new File("/etc/passwd")` | ❌ 차단 | ❌ 차단 |
+| 네트워크 | `new URL("http://...")` | ❌ 차단 | ❌ 차단 |
+| 리플렉션 | `Class.forName("...")` | ❌ 차단 | ❌ 차단 |
+| 외부 의존성 | `@Grab('...')` | ❌ 차단 | ❌ 차단 |
+| **DB 접근** | `db.queryForList(...)` | ❌ 차단 | ✅ 허용 |
 
 ### 허용되는 작업
 
@@ -293,7 +305,11 @@ def square = { it * it }
 @Autowired
 SecureGroovyScriptExecutor secureExecutor;
 
+// 일반 스크립트 (DB 접근 불가)
 ScriptOutput output = secureExecutor.executeSecure("script-name", script, input);
+
+// DB 연동 스크립트 (DB 접근 허용)
+ScriptOutput dbOutput = secureExecutor.executeSecureWithDb("db-script", script, input);
 
 if (!output.isSuccess()) {
     // Security violation 또는 에러

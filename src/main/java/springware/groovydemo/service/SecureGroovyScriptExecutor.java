@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import springware.groovydemo.dto.ScriptInput;
 import springware.groovydemo.dto.ScriptOutput;
 
+import org.springframework.lang.Nullable;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,9 @@ import static org.codehaus.groovy.syntax.Types.*;
 /**
  * 보안이 강화된 Groovy 스크립트 실행기
  * SecureASTCustomizer를 사용하여 위험한 코드 실행을 방지
+ *
+ * - executeSecure(): DB 접근 불가 (기본)
+ * - executeSecureWithDb(): DB 접근 허용 (명시적 요청 시)
  */
 @Service
 public class SecureGroovyScriptExecutor {
@@ -120,7 +125,7 @@ public class SecureGroovyScriptExecutor {
         "javax.script.ScriptEngine"
     );
 
-    public SecureGroovyScriptExecutor(JdbcTemplate jdbcTemplate) {
+    public SecureGroovyScriptExecutor(@Nullable JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
         this.scriptCache = new ConcurrentHashMap<>();
         this.secureClassLoader = createSecureClassLoader();
@@ -178,12 +183,26 @@ public class SecureGroovyScriptExecutor {
     }
 
     /**
-     * 보안 모드로 스크립트 실행
+     * 보안 모드로 스크립트 실행 (DB 접근 불가)
      */
     public ScriptOutput executeSecure(String scriptName, String scriptSource, ScriptInput input) {
+        return executeSecure(scriptName, scriptSource, input, false);
+    }
+
+    /**
+     * 보안 모드로 스크립트 실행 (DB 접근 허용)
+     */
+    public ScriptOutput executeSecureWithDb(String scriptName, String scriptSource, ScriptInput input) {
+        return executeSecure(scriptName, scriptSource, input, true);
+    }
+
+    /**
+     * Internal secure execute method
+     */
+    private ScriptOutput executeSecure(String scriptName, String scriptSource, ScriptInput input, boolean includeDb) {
         try {
             // 추가 보안 검사 (컴파일 전)
-            validateScriptSource(scriptSource);
+            validateScriptSource(scriptSource, includeDb);
 
             Class<?> scriptClass = getOrCompileScript(scriptName, scriptSource);
             Script script = (Script) scriptClass.getDeclaredConstructor().newInstance();
@@ -191,8 +210,15 @@ public class SecureGroovyScriptExecutor {
             Binding binding = new Binding();
             binding.setVariable("input", input);
             binding.setVariable("output", new ScriptOutput());
-            binding.setVariable("db", jdbcTemplate);
             binding.setVariable("log", LoggerFactory.getLogger("SecureGroovyScript." + scriptName));
+
+            // DB access only when explicitly requested
+            if (includeDb) {
+                if (jdbcTemplate == null) {
+                    return ScriptOutput.error("JdbcTemplate is not available");
+                }
+                binding.setVariable("db", jdbcTemplate);
+            }
 
             if (input != null && input.getParameters() != null) {
                 input.getParameters().forEach(binding::setVariable);
@@ -224,7 +250,7 @@ public class SecureGroovyScriptExecutor {
     /**
      * 스크립트 소스 사전 검증 (정규식 기반 블랙리스트)
      */
-    private void validateScriptSource(String scriptSource) {
+    private void validateScriptSource(String scriptSource, boolean allowDb) {
         String[] dangerousPatterns = {
             "System\\.exit",
             "Runtime\\.getRuntime",
@@ -247,10 +273,16 @@ public class SecureGroovyScriptExecutor {
             "import\\s+java\\.lang\\.reflect\\."
         };
 
-        String upperSource = scriptSource;
         for (String pattern : dangerousPatterns) {
-            if (upperSource.matches("(?s).*" + pattern + ".*")) {
+            if (scriptSource.matches("(?s).*" + pattern + ".*")) {
                 throw new SecurityException("Dangerous pattern detected: " + pattern);
+            }
+        }
+
+        // DB 접근이 허용되지 않은 경우 db 변수 사용 차단
+        if (!allowDb) {
+            if (scriptSource.matches("(?s).*\\bdb\\..*")) {
+                throw new SecurityException("DB access not allowed. Use executeSecureWithDb() for DB operations.");
             }
         }
     }

@@ -286,6 +286,37 @@ class SecureGroovyScriptTest {
         printBlocked("java.io import", output);
     }
 
+    @Test
+    @DisplayName("차단: DB 접근 (executeSecure)")
+    void testBlocked_DbAccess() {
+        String script = """
+            def products = db.queryForList("SELECT * FROM product")
+            return products
+            """;
+
+        ScriptOutput output = secureExecutor.executeSecure("db-access", script, new ScriptInput());
+
+        assertFalse(output.isSuccess());
+        assertTrue(output.getErrorMessage().contains("DB access not allowed"));
+        printBlocked("DB 접근 (executeSecure)", output);
+    }
+
+    @Test
+    @DisplayName("허용: DB 접근 (executeSecureWithDb)")
+    void testAllowed_DbAccessWithDb() {
+        String script = """
+            def count = db.queryForObject("SELECT COUNT(*) FROM product", Long.class)
+            output.put("count", count)
+            return count
+            """;
+
+        ScriptOutput output = secureExecutor.executeSecureWithDb("db-access-allowed", script, new ScriptInput());
+
+        assertTrue(output.isSuccess());
+        System.out.println("\n[허용] DB 접근 (executeSecureWithDb)");
+        System.out.println("  Result: " + output.getResult());
+    }
+
     // ==================== 종합 테스트 ====================
 
     @Test
