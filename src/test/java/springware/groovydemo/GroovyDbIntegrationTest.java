@@ -66,7 +66,7 @@ class GroovyDbIntegrationTest {
 
         // 전체 조회
         ScriptInput input1 = new ScriptInput().put("limit", 10);
-        ScriptOutput output1 = executor.execute("select-all", script, input1);
+        ScriptOutput output1 = executor.executeWithDb("select-all", script, input1);
 
         assertTrue(output1.isSuccess());
         @SuppressWarnings("unchecked")
@@ -85,7 +85,7 @@ class GroovyDbIntegrationTest {
         ScriptInput input2 = new ScriptInput()
             .put("category", "Electronics")
             .put("limit", 10);
-        ScriptOutput output2 = executor.execute("select-electronics", script, input2);
+        ScriptOutput output2 = executor.executeWithDb("select-electronics", script, input2);
 
         assertTrue(output2.isSuccess());
         assertEquals(2, output2.getData().get("count"));
@@ -103,7 +103,7 @@ class GroovyDbIntegrationTest {
             .put("quantity", 100)
             .put("category", "Electronics");
 
-        ScriptOutput output = executor.execute("insert-product", script, input);
+        ScriptOutput output = executor.executeWithDb("insert-product", script, input);
 
         assertTrue(output.isSuccess());
         assertTrue((Boolean) output.getData().get("success"));
@@ -130,7 +130,7 @@ class GroovyDbIntegrationTest {
             .put("quantity", 50)
             .put("category", "Electronics");
 
-        ScriptOutput output = executor.execute("insert-duplicate", script, input);
+        ScriptOutput output = executor.executeWithDb("insert-duplicate", script, input);
 
         assertTrue(output.isSuccess());  // 스크립트 실행은 성공
         assertFalse((Boolean) output.getData().get("success"));  // 비즈니스 로직 실패
@@ -153,7 +153,7 @@ class GroovyDbIntegrationTest {
             .put("code", "ELEC-001")
             .put("adjustment", 50);
 
-        ScriptOutput increaseOutput = executor.execute("stock-increase", script, increaseInput);
+        ScriptOutput increaseOutput = executor.executeWithDb("stock-increase", script, increaseInput);
 
         assertTrue(increaseOutput.isSuccess());
         assertEquals(100, increaseOutput.getData().get("previousQuantity"));
@@ -170,7 +170,7 @@ class GroovyDbIntegrationTest {
             .put("code", "ELEC-001")
             .put("adjustment", -30);
 
-        ScriptOutput decreaseOutput = executor.execute("stock-decrease", script, decreaseInput);
+        ScriptOutput decreaseOutput = executor.executeWithDb("stock-decrease", script, decreaseInput);
 
         assertTrue(decreaseOutput.isSuccess());
         assertEquals(150, decreaseOutput.getData().get("previousQuantity"));
@@ -191,7 +191,7 @@ class GroovyDbIntegrationTest {
             .put("code", "ELEC-001")
             .put("adjustment", -200);  // 현재 재고 100보다 많이 감소
 
-        ScriptOutput output = executor.execute("stock-insufficient", script, input);
+        ScriptOutput output = executor.executeWithDb("stock-insufficient", script, input);
 
         assertTrue(output.isSuccess());
         assertFalse((Boolean) output.getData().get("success"));
@@ -209,7 +209,7 @@ class GroovyDbIntegrationTest {
 
         // 전체 카테고리
         ScriptInput input = new ScriptInput();
-        ScriptOutput output = executor.execute("inventory-value", script, input);
+        ScriptOutput output = executor.executeWithDb("inventory-value", script, input);
 
         assertTrue(output.isSuccess());
 
@@ -245,7 +245,7 @@ class GroovyDbIntegrationTest {
             .put("category", "Electronics")
             .put("adjustmentPercent", new BigDecimal("10"));
 
-        ScriptOutput output = executor.execute("bulk-price-update", script, input);
+        ScriptOutput output = executor.executeWithDb("bulk-price-update", script, input);
 
         assertTrue(output.isSuccess());
         assertTrue((Boolean) output.getData().get("success"));
@@ -277,14 +277,14 @@ class GroovyDbIntegrationTest {
         int iterations = 100;
 
         // Warm up cache
-        executor.execute("perf-select", script, new ScriptInput().put("limit", 5));
+        executor.executeWithDb("perf-select", script, new ScriptInput().put("limit", 5));
 
         long start = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
             ScriptInput input = new ScriptInput()
                 .put("category", "Electronics")
                 .put("limit", 10);
-            executor.execute("perf-select", script, input);
+            executor.executeWithDb("perf-select", script, input);
         }
         long duration = System.nanoTime() - start;
 

@@ -63,7 +63,7 @@ src/main/resources/
 @Autowired
 private GroovyScriptExecutor executor;
 
-// 스크립트 실행
+// 기본 실행 (DB 없음)
 String script = """
     def a = input.get("a") as Integer
     def b = input.get("b") as Integer
@@ -76,10 +76,16 @@ ScriptInput input = new ScriptInput()
 
 ScriptOutput output = executor.execute("add-script", script, input);
 
-if (output.isSuccess()) {
-    System.out.println("Result: " + output.getResult());  // 30
-}
+// DB 연동이 필요한 경우
+ScriptOutput dbOutput = executor.executeWithDb("db-script", dbScript, input);
 ```
+
+### 메서드 종류
+
+| 메서드 | DB 접근 | 용도 |
+|--------|---------|------|
+| `execute()` | ❌ | 일반 스크립트 실행 |
+| `executeWithDb()` | ✅ | DB 연동 스크립트 실행 |
 
 ### 바인딩된 변수
 
