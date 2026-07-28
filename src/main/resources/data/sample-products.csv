@@ -1,0 +1,11 @@
+code,name,price,quantity,category
+PROD-001,Wireless Mouse,29.99,150,Electronics
+PROD-002,Mechanical Keyboard,89.99,75,Electronics
+PROD-003,USB-C Hub,45.50,200,Electronics
+PROD-004,Monitor Stand,35.00,120,Accessories
+PROD-005,Webcam HD,79.99,90,Electronics
+PROD-006,Desk Lamp LED,25.99,180,Lighting
+PROD-007,Ergonomic Chair,299.99,30,Furniture
+PROD-008,Standing Desk,450.00,25,Furniture
+PROD-009,Cable Organizer,12.99,300,Accessories
+PROD-010,Mousepad XL,19.99,250,Accessories

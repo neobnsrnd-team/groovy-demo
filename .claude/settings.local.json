@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew test:*)",
+      "WebSearch",
+      "Bash(./gradlew clean test:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
