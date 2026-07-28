@@ -317,6 +317,56 @@ if (!output.isSuccess()) {
 }
 ```
 
+### ExecutionOptions (선택적 보안 완화)
+
+기본적으로 모든 위험 작업이 차단되지만, `ExecutionOptions`를 사용하여 필요한 기능을 선택적으로 허용할 수 있습니다.
+
+#### 옵션 목록
+
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `allowDb` | false | DB 접근 허용 |
+| `allowFileAccess` | false | 파일 시스템 접근 허용 |
+| `allowNetworkAccess` | false | 네트워크 접근 허용 |
+| `allowThreadAccess` | false | Thread 접근 허용 |
+| `allowReflection` | false | 리플렉션 허용 |
+| `allowSystemAccess` | false | System 클래스 접근 허용 |
+| `allowProcessExecution` | false | 프로세스 실행 허용 |
+
+#### 사용 방법
+
+```java
+// 기본 옵션 (모든 위험 작업 차단)
+ExecutionOptions defaults = ExecutionOptions.defaults();
+
+// DB 접근만 허용
+ExecutionOptions withDb = ExecutionOptions.withDb();
+
+// 모든 작업 허용 (주의: 보안 위험)
+ExecutionOptions allowAll = ExecutionOptions.allowAll();
+
+// 커스텀 옵션 (Builder 패턴)
+ExecutionOptions custom = ExecutionOptions.builder()
+    .allowDb(true)
+    .allowFileAccess(true)
+    .allowNetworkAccess(false)
+    .build();
+
+// 옵션을 사용한 실행
+ScriptOutput output = secureExecutor.executeSecure(
+    "script-name", script, input, custom
+);
+```
+
+#### 항상 차단되는 패턴
+
+`allowAll()`을 사용해도 다음은 항상 차단됩니다:
+
+- `@Grab` (외부 의존성 로딩)
+- `GroovyShell` (동적 스크립트 실행)
+- `GroovyClassLoader` (동적 클래스 로딩)
+- `Eval` (동적 평가)
+
 ### 주의사항
 
 > **SecureASTCustomizer 한계**: 정적 분석 기반이므로 동적 우회 가능성 존재.
