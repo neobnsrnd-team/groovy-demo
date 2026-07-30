@@ -81,7 +81,7 @@ ScriptOutput output = executor.execute("add-script", script, input);
 
 // DB 연동이 필요한 경우
 ScriptOutput dbOutput = executor.execute("db-script", dbScript, input,
-    ExecutionOptions.withDb());
+    ExecutionOptions.builder().allowDb(true).build());
 ```
 
 ### SecureGroovyScriptExecutor
@@ -95,7 +95,7 @@ ScriptOutput output = secureExecutor.execute("script-name", script, input);
 
 // DB 접근 허용
 ScriptOutput dbOutput = secureExecutor.execute("db-script", script, input,
-    ExecutionOptions.withDb());
+    ExecutionOptions.builder().allowDb(true).build());
 
 // 커스텀 옵션
 ExecutionOptions options = ExecutionOptions.builder()
@@ -140,14 +140,11 @@ ScriptOutput customOutput = secureExecutor.execute("custom-script", script, inpu
 // 기본 옵션 (모든 위험 작업 차단)
 ExecutionOptions.defaults()
 
-// DB 접근만 허용
-ExecutionOptions.withDb()
-
 // 모든 작업 허용 (주의: 보안 위험)
 ExecutionOptions.allowAll()
 ```
 
-### Builder 패턴
+### Builder 패턴 (권장)
 
 ```java
 ExecutionOptions options = ExecutionOptions.builder()

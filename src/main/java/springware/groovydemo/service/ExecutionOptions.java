@@ -34,13 +34,6 @@ public class ExecutionOptions {
     }
 
     /**
-     * DB 접근만 허용하는 옵션
-     */
-    public static ExecutionOptions withDb() {
-        return new Builder().allowDb(true).build();
-    }
-
-    /**
      * 모든 작업 허용 (주의: 보안 위험)
      */
     public static ExecutionOptions allowAll() {

@@ -304,7 +304,7 @@ class SecureGroovyScriptTest {
     }
 
     @Test
-    @DisplayName("허용: DB 접근 (ExecutionOptions.withDb())")
+    @DisplayName("허용: DB 접근 (allowDb=true)")
     void testAllowed_DbAccessWithDb() {
         String script = """
             def count = db.queryForObject("SELECT COUNT(*) FROM product", Long.class)
@@ -313,10 +313,10 @@ class SecureGroovyScriptTest {
             """;
 
         ScriptOutput output = secureExecutor.execute("db-access-allowed", script, new ScriptInput(),
-            ExecutionOptions.withDb());
+            ExecutionOptions.builder().allowDb(true).build());
 
         assertTrue(output.isSuccess());
-        System.out.println("\n[허용] DB 접근 (ExecutionOptions.withDb())");
+        System.out.println("\n[허용] DB 접근 (allowDb=true)");
         System.out.println("  Result: " + output.getResult());
     }
 
@@ -570,7 +570,7 @@ class SecureGroovyScriptTest {
 
         // allowDb=true (허용)
         ScriptOutput allowed = secureExecutor.execute("db-opt-allowed", script, new ScriptInput(),
-            ExecutionOptions.withDb());
+            ExecutionOptions.builder().allowDb(true).build());
         assertTrue(allowed.isSuccess());
         System.out.println("[허용] DB 접근 (allowDb=true)");
         System.out.println("  Count: " + allowed.getResult());
@@ -677,16 +677,16 @@ class SecureGroovyScriptTest {
     @DisplayName("옵션: ExecutionOptions.toString() 테스트")
     void testOption_ToString() {
         ExecutionOptions defaults = ExecutionOptions.defaults();
-        ExecutionOptions withDb = ExecutionOptions.withDb();
+        ExecutionOptions dbEnabled = ExecutionOptions.builder().allowDb(true).build();
         ExecutionOptions allowAll = ExecutionOptions.allowAll();
 
         System.out.println("\n[ExecutionOptions.toString()]");
         System.out.println("  defaults(): " + defaults);
-        System.out.println("  withDb(): " + withDb);
+        System.out.println("  allowDb(true): " + dbEnabled);
         System.out.println("  allowAll(): " + allowAll);
 
         assertTrue(defaults.toString().contains("allowDb=false"));
-        assertTrue(withDb.toString().contains("allowDb=true"));
+        assertTrue(dbEnabled.toString().contains("allowDb=true"));
         assertTrue(allowAll.toString().contains("allowProcessExecution=true"));
     }
 }

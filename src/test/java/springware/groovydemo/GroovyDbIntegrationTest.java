@@ -30,7 +30,7 @@ class GroovyDbIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private static final ExecutionOptions DB_OPTIONS = ExecutionOptions.withDb();
+    private static final ExecutionOptions DB_OPTIONS = ExecutionOptions.builder().allowDb(true).build();
 
     @BeforeEach
     void setUp() {
