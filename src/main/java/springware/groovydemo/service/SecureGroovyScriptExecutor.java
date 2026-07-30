@@ -27,9 +27,8 @@ import static org.codehaus.groovy.syntax.Types.*;
  * SecureASTCustomizer를 사용하여 위험한 코드 실행을 방지
  *
  * 사용법:
- * - executeSecure(name, source, input): 기본 보안 (모든 위험 작업 차단)
- * - executeSecure(name, source, input, options): 선택적 보안 완화
- * - executeSecureWithDb(name, source, input): DB 접근 허용 (편의 메서드)
+ * - execute(name, source, input): 기본 보안 (모든 위험 작업 차단)
+ * - execute(name, source, input, options): 선택적 보안 완화
  */
 @Service
 public class SecureGroovyScriptExecutor {
@@ -66,53 +65,6 @@ public class SecureGroovyScriptExecutor {
         "groovy.lang.GroovyClassLoader",
         "groovy.util.Eval",
         "javax.script.ScriptEngine"
-    );
-
-    // System 관련 리시버
-    private static final List<String> SYSTEM_RECEIVERS = Arrays.asList(
-        "java.lang.System",
-        "java.lang.Runtime"
-    );
-
-    // Process 관련 리시버
-    private static final List<String> PROCESS_RECEIVERS = Arrays.asList(
-        "java.lang.ProcessBuilder"
-    );
-
-    // Thread 관련 리시버
-    private static final List<String> THREAD_RECEIVERS = Arrays.asList(
-        "java.lang.Thread",
-        "java.lang.ThreadGroup"
-    );
-
-    // Reflection 관련 리시버
-    private static final List<String> REFLECTION_RECEIVERS = Arrays.asList(
-        "java.lang.Class",
-        "java.lang.ClassLoader",
-        "java.lang.reflect.Method",
-        "java.lang.reflect.Field",
-        "java.lang.reflect.Constructor"
-    );
-
-    // File 관련 리시버
-    private static final List<String> FILE_RECEIVERS = Arrays.asList(
-        "java.io.File",
-        "java.io.FileInputStream",
-        "java.io.FileOutputStream",
-        "java.io.FileReader",
-        "java.io.FileWriter",
-        "java.nio.file.Files",
-        "java.nio.file.Paths",
-        "java.nio.file.Path"
-    );
-
-    // Network 관련 리시버
-    private static final List<String> NETWORK_RECEIVERS = Arrays.asList(
-        "java.net.URL",
-        "java.net.URLConnection",
-        "java.net.HttpURLConnection",
-        "java.net.Socket",
-        "java.net.ServerSocket"
     );
 
     public SecureGroovyScriptExecutor(@Nullable JdbcTemplate jdbcTemplate) {
@@ -169,22 +121,15 @@ public class SecureGroovyScriptExecutor {
     /**
      * 기본 보안 모드로 스크립트 실행 (모든 위험 작업 차단)
      */
-    public ScriptOutput executeSecure(String scriptName, String scriptSource, ScriptInput input) {
-        return executeSecure(scriptName, scriptSource, input, ExecutionOptions.defaults());
+    public ScriptOutput execute(String scriptName, String scriptSource, ScriptInput input) {
+        return execute(scriptName, scriptSource, input, ExecutionOptions.defaults());
     }
 
     /**
-     * DB 접근 허용 모드로 스크립트 실행 (편의 메서드)
+     * 옵션 기반 스크립트 실행
      */
-    public ScriptOutput executeSecureWithDb(String scriptName, String scriptSource, ScriptInput input) {
-        return executeSecure(scriptName, scriptSource, input, ExecutionOptions.withDb());
-    }
-
-    /**
-     * 커스텀 옵션으로 스크립트 실행
-     */
-    public ScriptOutput executeSecure(String scriptName, String scriptSource, ScriptInput input,
-                                      ExecutionOptions options) {
+    public ScriptOutput execute(String scriptName, String scriptSource, ScriptInput input,
+                                ExecutionOptions options) {
         try {
             // 옵션 기반 보안 검사
             validateScriptSource(scriptSource, options);

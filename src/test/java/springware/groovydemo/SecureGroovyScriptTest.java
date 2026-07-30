@@ -38,7 +38,7 @@ class SecureGroovyScriptTest {
             return result
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("basic-ops", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("basic-ops", script, new ScriptInput());
 
         assertTrue(output.isSuccess());
         assertEquals(50, output.getResult());
@@ -62,7 +62,7 @@ class SecureGroovyScriptTest {
             return sum
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("collections", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("collections", script, new ScriptInput());
 
         assertTrue(output.isSuccess());
         assertEquals(15, output.getData().get("sum"));
@@ -92,7 +92,7 @@ class SecureGroovyScriptTest {
             .put("price", new BigDecimal("99.99"))
             .put("quantity", 3);
 
-        ScriptOutput output = secureExecutor.executeSecure("bigdecimal", script, input);
+        ScriptOutput output = secureExecutor.execute("bigdecimal", script, input);
 
         assertTrue(output.isSuccess());
         printResult("BigDecimal 계산", output);
@@ -115,7 +115,7 @@ class SecureGroovyScriptTest {
             return today
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("datetime", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("datetime", script, new ScriptInput());
 
         assertTrue(output.isSuccess());
         assertNotNull(output.getData().get("today"));
@@ -140,7 +140,7 @@ class SecureGroovyScriptTest {
             return result1
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("closures", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("closures", script, new ScriptInput());
 
         assertTrue(output.isSuccess());
         assertEquals(12, output.getData().get("multiply"));
@@ -157,7 +157,7 @@ class SecureGroovyScriptTest {
             return "should not reach here"
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("system-exit", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("system-exit", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         assertTrue(output.getErrorMessage().contains("Security violation") ||
@@ -173,7 +173,7 @@ class SecureGroovyScriptTest {
             return "should not reach here"
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("runtime-exec", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("runtime-exec", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("Runtime.exec()", output);
@@ -187,7 +187,7 @@ class SecureGroovyScriptTest {
             return "should not reach here"
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("process-execute", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("process-execute", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("String.execute()", output);
@@ -200,7 +200,7 @@ class SecureGroovyScriptTest {
             new File("/etc/passwd").text
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("file-access", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("file-access", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("File 접근", output);
@@ -213,7 +213,7 @@ class SecureGroovyScriptTest {
             new URL("http://example.com").text
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("url-access", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("url-access", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("URL 접근", output);
@@ -226,7 +226,7 @@ class SecureGroovyScriptTest {
             Class.forName("java.lang.Runtime")
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("reflection", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("reflection", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("리플렉션", output);
@@ -239,7 +239,7 @@ class SecureGroovyScriptTest {
             new GroovyShell().evaluate("System.exit(0)")
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("groovy-shell", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("groovy-shell", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("GroovyShell", output);
@@ -252,7 +252,7 @@ class SecureGroovyScriptTest {
             Thread.currentThread().interrupt()
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("thread", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("thread", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("Thread 접근", output);
@@ -267,7 +267,7 @@ class SecureGroovyScriptTest {
             return "loaded"
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("grab", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("grab", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("@Grab 어노테이션", output);
@@ -281,30 +281,30 @@ class SecureGroovyScriptTest {
             return "should not compile"
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("io-import", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("io-import", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         printBlocked("java.io import", output);
     }
 
     @Test
-    @DisplayName("차단: DB 접근 (executeSecure)")
+    @DisplayName("차단: DB 접근 (기본 옵션)")
     void testBlocked_DbAccess() {
         String script = """
             def products = db.queryForList("SELECT * FROM product")
             return products
             """;
 
-        ScriptOutput output = secureExecutor.executeSecure("db-access", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("db-access", script, new ScriptInput());
 
         assertFalse(output.isSuccess());
         assertTrue(output.getErrorMessage().contains("DB access") ||
                    output.getErrorMessage().contains("db"));
-        printBlocked("DB 접근 (executeSecure)", output);
+        printBlocked("DB 접근 (기본 옵션)", output);
     }
 
     @Test
-    @DisplayName("허용: DB 접근 (executeSecureWithDb)")
+    @DisplayName("허용: DB 접근 (ExecutionOptions.withDb())")
     void testAllowed_DbAccessWithDb() {
         String script = """
             def count = db.queryForObject("SELECT COUNT(*) FROM product", Long.class)
@@ -312,10 +312,11 @@ class SecureGroovyScriptTest {
             return count
             """;
 
-        ScriptOutput output = secureExecutor.executeSecureWithDb("db-access-allowed", script, new ScriptInput());
+        ScriptOutput output = secureExecutor.execute("db-access-allowed", script, new ScriptInput(),
+            ExecutionOptions.withDb());
 
         assertTrue(output.isSuccess());
-        System.out.println("\n[허용] DB 접근 (executeSecureWithDb)");
+        System.out.println("\n[허용] DB 접근 (ExecutionOptions.withDb())");
         System.out.println("  Result: " + output.getResult());
     }
 
@@ -364,7 +365,7 @@ class SecureGroovyScriptTest {
             .put("grade", "VIP")
             .put("couponCode", "SPRING20");
 
-        ScriptOutput output = secureExecutor.executeSecure("business-logic", script, input);
+        ScriptOutput output = secureExecutor.execute("business-logic", script, input);
 
         assertTrue(output.isSuccess());
 
@@ -414,7 +415,7 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("sys-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("sys-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("System.getenv (기본)", blocked);
 
@@ -422,7 +423,7 @@ class SecureGroovyScriptTest {
         ExecutionOptions options = ExecutionOptions.builder()
             .allowSystemAccess(true)
             .build();
-        ScriptOutput allowed = secureExecutor.executeSecure("sys-allowed", script, new ScriptInput(), options);
+        ScriptOutput allowed = secureExecutor.execute("sys-allowed", script, new ScriptInput(), options);
         assertTrue(allowed.isSuccess());
         System.out.println("[허용] System.getenv (allowSystemAccess=true)");
         System.out.println("  Result: " + allowed.getResult());
@@ -437,7 +438,7 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("proc-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("proc-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("String.execute (기본)", blocked);
 
@@ -445,7 +446,7 @@ class SecureGroovyScriptTest {
         ExecutionOptions options = ExecutionOptions.builder()
             .allowProcessExecution(true)
             .build();
-        ScriptOutput allowed = secureExecutor.executeSecure("proc-allowed", script, new ScriptInput(), options);
+        ScriptOutput allowed = secureExecutor.execute("proc-allowed", script, new ScriptInput(), options);
         // 참고: AST 레벨에서 차단될 수 있으므로 결과 확인
         System.out.println("[테스트] Process execution (allowProcessExecution=true)");
         System.out.println("  Success: " + allowed.isSuccess());
@@ -463,7 +464,7 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("thread-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("thread-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("Thread 접근 (기본)", blocked);
 
@@ -471,7 +472,7 @@ class SecureGroovyScriptTest {
         ExecutionOptions options = ExecutionOptions.builder()
             .allowThreadAccess(true)
             .build();
-        ScriptOutput allowed = secureExecutor.executeSecure("thread-allowed", script, new ScriptInput(), options);
+        ScriptOutput allowed = secureExecutor.execute("thread-allowed", script, new ScriptInput(), options);
         System.out.println("[테스트] Thread 접근 (allowThreadAccess=true)");
         System.out.println("  Success: " + allowed.isSuccess());
         if (allowed.isSuccess()) {
@@ -488,7 +489,7 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("reflect-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("reflect-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("Class.forName (기본)", blocked);
 
@@ -496,7 +497,7 @@ class SecureGroovyScriptTest {
         ExecutionOptions options = ExecutionOptions.builder()
             .allowReflection(true)
             .build();
-        ScriptOutput allowed = secureExecutor.executeSecure("reflect-allowed", script, new ScriptInput(), options);
+        ScriptOutput allowed = secureExecutor.execute("reflect-allowed", script, new ScriptInput(), options);
         System.out.println("[테스트] Reflection (allowReflection=true)");
         System.out.println("  Success: " + allowed.isSuccess());
         if (allowed.isSuccess()) {
@@ -513,7 +514,7 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("file-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("file-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("File 접근 (기본)", blocked);
 
@@ -521,7 +522,7 @@ class SecureGroovyScriptTest {
         ExecutionOptions options = ExecutionOptions.builder()
             .allowFileAccess(true)
             .build();
-        ScriptOutput allowed = secureExecutor.executeSecure("file-allowed", script, new ScriptInput(), options);
+        ScriptOutput allowed = secureExecutor.execute("file-allowed", script, new ScriptInput(), options);
         System.out.println("[테스트] File 접근 (allowFileAccess=true)");
         System.out.println("  Success: " + allowed.isSuccess());
         if (allowed.isSuccess()) {
@@ -538,7 +539,7 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("net-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("net-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("URL 접근 (기본)", blocked);
 
@@ -546,7 +547,7 @@ class SecureGroovyScriptTest {
         ExecutionOptions options = ExecutionOptions.builder()
             .allowNetworkAccess(true)
             .build();
-        ScriptOutput allowed = secureExecutor.executeSecure("net-allowed", script, new ScriptInput(), options);
+        ScriptOutput allowed = secureExecutor.execute("net-allowed", script, new ScriptInput(), options);
         System.out.println("[테스트] Network 접근 (allowNetworkAccess=true)");
         System.out.println("  Success: " + allowed.isSuccess());
         if (allowed.isSuccess()) {
@@ -563,12 +564,13 @@ class SecureGroovyScriptTest {
             """;
 
         // 기본 옵션 (차단)
-        ScriptOutput blocked = secureExecutor.executeSecure("db-opt-blocked", script, new ScriptInput());
+        ScriptOutput blocked = secureExecutor.execute("db-opt-blocked", script, new ScriptInput());
         assertFalse(blocked.isSuccess());
         printBlocked("DB 접근 (기본)", blocked);
 
-        // allowDb=true (허용) - executeSecureWithDb 사용
-        ScriptOutput allowed = secureExecutor.executeSecureWithDb("db-opt-allowed", script, new ScriptInput());
+        // allowDb=true (허용)
+        ScriptOutput allowed = secureExecutor.execute("db-opt-allowed", script, new ScriptInput(),
+            ExecutionOptions.withDb());
         assertTrue(allowed.isSuccess());
         System.out.println("[허용] DB 접근 (allowDb=true)");
         System.out.println("  Count: " + allowed.getResult());
@@ -588,7 +590,7 @@ class SecureGroovyScriptTest {
             """;
 
         ExecutionOptions options = ExecutionOptions.allowAll();
-        ScriptOutput output = secureExecutor.executeSecure("allow-all", script, new ScriptInput(), options);
+        ScriptOutput output = secureExecutor.execute("allow-all", script, new ScriptInput(), options);
 
         System.out.println("\n[테스트] allowAll() - 모든 제약 해제");
         System.out.println("  Success: " + output.isSuccess());
@@ -618,8 +620,8 @@ class SecureGroovyScriptTest {
             .allowDb(true)
             .build();
 
-        ScriptOutput dbResult = secureExecutor.executeSecure("combo-db", dbScript, new ScriptInput(), dbOnly);
-        ScriptOutput fileResult = secureExecutor.executeSecure("combo-file", fileScript, new ScriptInput(), dbOnly);
+        ScriptOutput dbResult = secureExecutor.execute("combo-db", dbScript, new ScriptInput(), dbOnly);
+        ScriptOutput fileResult = secureExecutor.execute("combo-file", fileScript, new ScriptInput(), dbOnly);
 
         System.out.println("\n[복합 옵션] allowDb=true, allowFileAccess=false");
         System.out.println("  DB Script: " + (dbResult.isSuccess() ? "허용 ✓" : "차단 ✗"));
@@ -634,8 +636,8 @@ class SecureGroovyScriptTest {
             .allowFileAccess(true)
             .build();
 
-        ScriptOutput dbResult2 = secureExecutor.executeSecure("combo-db2", dbScript, new ScriptInput(), dbAndFile);
-        ScriptOutput fileResult2 = secureExecutor.executeSecure("combo-file2", fileScript, new ScriptInput(), dbAndFile);
+        ScriptOutput dbResult2 = secureExecutor.execute("combo-db2", dbScript, new ScriptInput(), dbAndFile);
+        ScriptOutput fileResult2 = secureExecutor.execute("combo-file2", fileScript, new ScriptInput(), dbAndFile);
 
         System.out.println("\n[복합 옵션] allowDb=true, allowFileAccess=true");
         System.out.println("  DB Script: " + (dbResult2.isSuccess() ? "허용 ✓" : "차단 ✗"));
@@ -660,8 +662,8 @@ class SecureGroovyScriptTest {
         // allowAll로도 차단되어야 함
         ExecutionOptions allowAll = ExecutionOptions.allowAll();
 
-        ScriptOutput grabResult = secureExecutor.executeSecure("always-grab", grabScript, new ScriptInput(), allowAll);
-        ScriptOutput shellResult = secureExecutor.executeSecure("always-shell", shellScript, new ScriptInput(), allowAll);
+        ScriptOutput grabResult = secureExecutor.execute("always-grab", grabScript, new ScriptInput(), allowAll);
+        ScriptOutput shellResult = secureExecutor.execute("always-shell", shellScript, new ScriptInput(), allowAll);
 
         System.out.println("\n[항상 차단] allowAll()로도 차단되는 패턴");
         System.out.println("  @Grab: " + (grabResult.isSuccess() ? "허용 ✗ (문제!)" : "차단 ✓"));

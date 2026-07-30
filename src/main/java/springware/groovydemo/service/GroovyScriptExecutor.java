@@ -3,7 +3,6 @@ package springware.groovydemo.service;
 import groovy.lang.Binding;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.Script;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
@@ -14,10 +13,15 @@ import springware.groovydemo.dto.ScriptOutput;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Groovy 스크립트 실행기 (보안 제약 없음)
+ *
+ * 사용법:
+ * - execute(name, source, input): 기본 실행 (DB 접근 불가)
+ * - execute(name, source, input, options): 옵션 기반 실행
+ */
 @Service
 public class GroovyScriptExecutor {
-
-    private static final Logger log = LoggerFactory.getLogger(GroovyScriptExecutor.class);
 
     private final GroovyClassLoader groovyClassLoader;
     private final Map<String, Class<?>> scriptCache;
@@ -30,62 +34,17 @@ public class GroovyScriptExecutor {
     }
 
     /**
-     * Execute a Groovy script with the given input (without DB access).
-     *
-     * @param scriptName unique name/key for caching
-     * @param scriptSource Groovy script source code
-     * @param input input parameters for the script
-     * @return ScriptOutput containing the result or error
+     * 기본 옵션으로 스크립트 실행 (DB 접근 불가)
      */
     public ScriptOutput execute(String scriptName, String scriptSource, ScriptInput input) {
-        return execute(scriptName, scriptSource, input, null, false);
+        return execute(scriptName, scriptSource, input, ExecutionOptions.defaults());
     }
 
     /**
-     * Execute a Groovy script with additional bindings (without DB access).
-     *
-     * @param scriptName unique name/key for caching
-     * @param scriptSource Groovy script source code
-     * @param input input parameters for the script
-     * @param extraBindings additional variables to bind (can be null)
-     * @return ScriptOutput containing the result or error
+     * 옵션 기반 스크립트 실행
      */
     public ScriptOutput execute(String scriptName, String scriptSource, ScriptInput input,
-                                Map<String, Object> extraBindings) {
-        return execute(scriptName, scriptSource, input, extraBindings, false);
-    }
-
-    /**
-     * Execute a Groovy script with DB access (JdbcTemplate).
-     *
-     * @param scriptName unique name/key for caching
-     * @param scriptSource Groovy script source code
-     * @param input input parameters for the script
-     * @return ScriptOutput containing the result or error
-     */
-    public ScriptOutput executeWithDb(String scriptName, String scriptSource, ScriptInput input) {
-        return execute(scriptName, scriptSource, input, null, true);
-    }
-
-    /**
-     * Execute a Groovy script with DB access and additional bindings.
-     *
-     * @param scriptName unique name/key for caching
-     * @param scriptSource Groovy script source code
-     * @param input input parameters for the script
-     * @param extraBindings additional variables to bind (can be null)
-     * @return ScriptOutput containing the result or error
-     */
-    public ScriptOutput executeWithDb(String scriptName, String scriptSource, ScriptInput input,
-                                      Map<String, Object> extraBindings) {
-        return execute(scriptName, scriptSource, input, extraBindings, true);
-    }
-
-    /**
-     * Internal execute method with all options.
-     */
-    private ScriptOutput execute(String scriptName, String scriptSource, ScriptInput input,
-                                 Map<String, Object> extraBindings, boolean includeDb) {
+                                ExecutionOptions options) {
         try {
             Class<?> scriptClass = getOrCompileScript(scriptName, scriptSource);
             Script script = (Script) scriptClass.getDeclaredConstructor().newInstance();
@@ -95,28 +54,22 @@ public class GroovyScriptExecutor {
             binding.setVariable("output", new ScriptOutput());
             binding.setVariable("log", LoggerFactory.getLogger("GroovyScript." + scriptName));
 
-            // DB access only when requested
-            if (includeDb) {
+            // DB 접근 (옵션에 따라)
+            if (options.isAllowDb()) {
                 if (jdbcTemplate == null) {
                     return ScriptOutput.error("JdbcTemplate is not available");
                 }
                 binding.setVariable("db", jdbcTemplate);
             }
 
-            // Bind individual parameters for convenience
+            // input 파라미터 개별 바인딩
             if (input != null && input.getParameters() != null) {
                 input.getParameters().forEach(binding::setVariable);
-            }
-
-            // Bind extra variables
-            if (extraBindings != null) {
-                extraBindings.forEach(binding::setVariable);
             }
 
             script.setBinding(binding);
             Object result = script.run();
 
-            // Check if script set output variable
             Object outputVar = binding.getVariable("output");
             if (outputVar instanceof ScriptOutput scriptOutput) {
                 scriptOutput.setSuccess(true);
@@ -132,39 +85,24 @@ public class GroovyScriptExecutor {
         }
     }
 
-    /**
-     * Get compiled script from cache or compile and cache it.
-     */
     private Class<?> getOrCompileScript(String scriptName, String scriptSource) {
         return scriptCache.computeIfAbsent(scriptName, key ->
             groovyClassLoader.parseClass(scriptSource, scriptName + ".groovy")
         );
     }
 
-    /**
-     * Clear a specific script from cache (useful when script is updated).
-     */
     public void clearCache(String scriptName) {
         scriptCache.remove(scriptName);
     }
 
-    /**
-     * Clear all cached scripts.
-     */
     public void clearAllCache() {
         scriptCache.clear();
     }
 
-    /**
-     * Check if a script is cached.
-     */
     public boolean isCached(String scriptName) {
         return scriptCache.containsKey(scriptName);
     }
 
-    /**
-     * Get the number of cached scripts.
-     */
     public int getCacheSize() {
         return scriptCache.size();
     }

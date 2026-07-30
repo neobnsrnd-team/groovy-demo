@@ -14,12 +14,13 @@ Spring Boot 애플리케이션에서 Groovy 스크립트를 동적으로 실행�
 
 ## 주요 기능
 
-- ✅ Groovy 스크립트 동적 실행
-- ✅ 컴파일된 스크립트 캐싱 (ConcurrentHashMap)
-- ✅ JdbcTemplate을 통한 DB 연동
-- ✅ SLF4J 로깅 지원
-- ✅ 보안 샌드박스 (SecureASTCustomizer)
-- ✅ Bulk Insert (1000건 단위 배치)
+- Groovy 스크립트 동적 실행
+- 컴파일된 스크립트 캐싱 (ConcurrentHashMap)
+- JdbcTemplate을 통한 DB 연동
+- SLF4J 로깅 지원
+- 보안 샌드박스 (SecureASTCustomizer)
+- ExecutionOptions를 통한 세밀한 권한 제어
+- Bulk Insert (1000건 단위 배치)
 
 ---
 
@@ -30,23 +31,16 @@ src/main/java/springware/groovydemo/
 ├── dto/
 │   ├── ScriptInput.java        # 스크립트 입력 파라미터
 │   ├── ScriptOutput.java       # 스크립트 실행 결과
-│   └── Product.java            # 상품 DTO
+│   └── DemoProduct.java        # 상품 DTO
 ├── service/
 │   ├── GroovyScriptExecutor.java       # 기본 스크립트 실행기
 │   ├── SecureGroovyScriptExecutor.java # 보안 강화 실행기
+│   ├── ExecutionOptions.java           # 실행 옵션
 │   └── BulkInsertService.java          # Bulk Insert 서비스
 └── GroovyDemoApplication.java
 
 src/main/resources/
 ├── scripts/                    # Groovy 스크립트 파일
-│   ├── calculate-discount.groovy
-│   ├── validate-order.groovy
-│   ├── db-select-products.groovy
-│   ├── db-insert-product.groovy
-│   ├── db-update-stock.groovy
-│   ├── db-calculate-inventory-value.groovy
-│   ├── db-bulk-price-update.groovy
-│   └── logging-demo.groovy
 ├── data/
 │   └── sample-products.csv
 ├── schema.sql
@@ -57,13 +51,22 @@ src/main/resources/
 
 ## 1. 기본 사용법
 
+### API 개요
+
+두 실행기 모두 동일한 `execute()` 메서드를 사용하며, `ExecutionOptions`로 권한을 제어합니다.
+
+| Executor | 용도 |
+|----------|------|
+| `GroovyScriptExecutor` | 일반 스크립트 실행 (보안 제약 없음) |
+| `SecureGroovyScriptExecutor` | 보안 샌드박스 적용 |
+
 ### GroovyScriptExecutor
 
 ```java
 @Autowired
 private GroovyScriptExecutor executor;
 
-// 기본 실행 (DB 없음)
+// 기본 실행 (DB 접근 불가)
 String script = """
     def a = input.get("a") as Integer
     def b = input.get("b") as Integer
@@ -77,51 +80,95 @@ ScriptInput input = new ScriptInput()
 ScriptOutput output = executor.execute("add-script", script, input);
 
 // DB 연동이 필요한 경우
-ScriptOutput dbOutput = executor.executeWithDb("db-script", dbScript, input);
+ScriptOutput dbOutput = executor.execute("db-script", dbScript, input,
+    ExecutionOptions.withDb());
 ```
 
-### 메서드 종류
+### SecureGroovyScriptExecutor
 
-| 메서드 | DB 접근 | 용도 |
-|--------|---------|------|
-| `execute()` | ❌ | 일반 스크립트 실행 |
-| `executeWithDb()` | ✅ | DB 연동 스크립트 실행 |
+```java
+@Autowired
+private SecureGroovyScriptExecutor secureExecutor;
+
+// 기본 실행 (모든 위험 작업 차단)
+ScriptOutput output = secureExecutor.execute("script-name", script, input);
+
+// DB 접근 허용
+ScriptOutput dbOutput = secureExecutor.execute("db-script", script, input,
+    ExecutionOptions.withDb());
+
+// 커스텀 옵션
+ExecutionOptions options = ExecutionOptions.builder()
+    .allowDb(true)
+    .allowFileAccess(true)
+    .build();
+ScriptOutput customOutput = secureExecutor.execute("custom-script", script, input, options);
+```
 
 ### 바인딩된 변수
 
 스크립트 내에서 선언 없이 사용 가능한 변수들:
 
-| 변수명 | 타입 | 설명 |
-|--------|------|------|
-| `input` | ScriptInput | 입력 파라미터 |
-| `output` | ScriptOutput | 출력 데이터 |
-| `db` | JdbcTemplate | DB 접근 |
-| `log` | Logger | 로깅 |
-
-### 변수 주입 메커니즘
-
-```java
-// GroovyScriptExecutor.java
-Binding binding = new Binding();
-binding.setVariable("input", input);
-binding.setVariable("output", new ScriptOutput());  // ← 자동 생성
-binding.setVariable("db", jdbcTemplate);
-binding.setVariable("log", logger);
-
-script.setBinding(binding);  // 스크립트에 바인딩 연결
-script.run();
-```
-
-**Groovy 변수 해석 순서:**
-```
-1. 로컬 변수에서 찾기        → 없음
-2. 스크립트 필드에서 찾기     → 없음
-3. Binding에서 찾기          → 있음! (주입된 객체)
-```
+| 변수명 | 타입 | 설명 | 조건 |
+|--------|------|------|------|
+| `input` | ScriptInput | 입력 파라미터 | 항상 |
+| `output` | ScriptOutput | 출력 데이터 | 항상 |
+| `log` | Logger | 로깅 | 항상 |
+| `db` | JdbcTemplate | DB 접근 | `allowDb=true` |
 
 ---
 
-## 2. 스크립트 캐싱
+## 2. ExecutionOptions
+
+실행 옵션을 통해 세밀한 권한 제어가 가능합니다.
+
+### 옵션 목록
+
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `allowDb` | false | DB 접근 허용 |
+| `allowFileAccess` | false | 파일 시스템 접근 허용 |
+| `allowNetworkAccess` | false | 네트워크 접근 허용 |
+| `allowThreadAccess` | false | Thread 접근 허용 |
+| `allowReflection` | false | 리플렉션 허용 |
+| `allowSystemAccess` | false | System 클래스 접근 허용 |
+| `allowProcessExecution` | false | 프로세스 실행 허용 |
+
+### 편의 메서드
+
+```java
+// 기본 옵션 (모든 위험 작업 차단)
+ExecutionOptions.defaults()
+
+// DB 접근만 허용
+ExecutionOptions.withDb()
+
+// 모든 작업 허용 (주의: 보안 위험)
+ExecutionOptions.allowAll()
+```
+
+### Builder 패턴
+
+```java
+ExecutionOptions options = ExecutionOptions.builder()
+    .allowDb(true)
+    .allowFileAccess(true)
+    .allowNetworkAccess(false)
+    .build();
+```
+
+### 항상 차단되는 패턴
+
+`allowAll()`을 사용해도 다음은 항상 차단됩니다:
+
+- `@Grab` (외부 의존성 로딩)
+- `GroovyShell` (동적 스크립트 실행)
+- `GroovyClassLoader` (동적 클래스 로딩)
+- `Eval` (동적 평가)
+
+---
+
+## 3. 스크립트 캐싱
 
 ### Thread-Safe 구현
 
@@ -148,7 +195,7 @@ private Class<?> getOrCompileScript(String scriptName, String scriptSource) {
 
 ---
 
-## 3. DB 연동 (JdbcTemplate)
+## 4. DB 연동 (JdbcTemplate)
 
 ### SELECT 예제
 
@@ -205,7 +252,7 @@ BulkInsertResult result = bulkInsertService.bulkInsert(products, 1000);
 
 ---
 
-## 4. 로깅
+## 5. 로깅
 
 ### SLF4J Logger 사용 (권장)
 
@@ -214,14 +261,6 @@ log.debug("Debug: value = {}", value)
 log.info("Processing started")
 log.warn("Threshold exceeded: {}", value)
 log.error("Error occurred", exception)
-```
-
-### println / System.out
-
-```groovy
-println "Debug message"
-System.out.println("Standard output")
-System.err.println("Error output")
 ```
 
 ### 로그 레벨 설정 (application.properties)
@@ -236,24 +275,15 @@ logging.level.GroovyScript.my-script=DEBUG
 
 ---
 
-## 5. 보안 (Sandbox)
+## 6. 보안 (Sandbox)
 
-### SecureGroovyScriptExecutor
-
-#### 메서드 종류
-
-| 메서드 | DB 접근 | 용도 |
-|--------|---------|------|
-| `executeSecure()` | ❌ 차단 | 일반 보안 스크립트 |
-| `executeSecureWithDb()` | ✅ 허용 | DB 연동 보안 스크립트 |
-
-#### 4단계 보안 레이어
+### SecureGroovyScriptExecutor 4단계 보안 레이어
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 1: 소스코드 사전 검증 (정규식)                          │
 │  - System.exit, Runtime.exec, File, URL 등 패턴 차단         │
-│  - DB 접근 차단 (executeSecure 사용 시)                       │
+│  - ExecutionOptions에 따른 선택적 허용                        │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 2: Import 제한 (ImportCustomizer)                    │
 │  - 허용: java.util.*, java.math.*, java.time.*             │
@@ -264,21 +294,22 @@ logging.level.GroovyScript.my-script=DEBUG
 │  - 차단된 리시버 호출 불가                                    │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 4: 런타임 바인딩 제어                                  │
-│  - db 변수: executeSecureWithDb() 사용 시에만 바인딩          │
+│  - db 변수: allowDb=true 일 때만 바인딩                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 차단되는 작업
+### 차단/허용 예시
 
-| 위협 | 예시 코드 | executeSecure | executeSecureWithDb |
-|------|----------|:-------------:|:-------------------:|
-| 시스템 종료 | `System.exit(0)` | ❌ 차단 | ❌ 차단 |
-| 프로세스 실행 | `"cmd".execute()` | ❌ 차단 | ❌ 차단 |
-| 파일 접근 | `new File("/etc/passwd")` | ❌ 차단 | ❌ 차단 |
-| 네트워크 | `new URL("http://...")` | ❌ 차단 | ❌ 차단 |
-| 리플렉션 | `Class.forName("...")` | ❌ 차단 | ❌ 차단 |
-| 외부 의존성 | `@Grab('...')` | ❌ 차단 | ❌ 차단 |
-| **DB 접근** | `db.queryForList(...)` | ❌ 차단 | ✅ 허용 |
+| 위협 | 예시 코드 | 기본 | allowDb | allowAll |
+|------|----------|:----:|:-------:|:--------:|
+| 시스템 종료 | `System.exit(0)` | ❌ | ❌ | ✅ |
+| 프로세스 실행 | `"cmd".execute()` | ❌ | ❌ | ✅ |
+| 파일 접근 | `new File("/etc/passwd")` | ❌ | ❌ | ✅ |
+| 네트워크 | `new URL("http://...")` | ❌ | ❌ | ✅ |
+| 리플렉션 | `Class.forName("...")` | ❌ | ❌ | ✅ |
+| DB 접근 | `db.queryForList(...)` | ❌ | ✅ | ✅ |
+| @Grab | `@Grab('...')` | ❌ | ❌ | ❌ |
+| GroovyShell | `new GroovyShell()` | ❌ | ❌ | ❌ |
 
 ### 허용되는 작업
 
@@ -299,74 +330,6 @@ def today = LocalDate.now()
 def square = { it * it }
 ```
 
-### 사용 예시
-
-```java
-@Autowired
-SecureGroovyScriptExecutor secureExecutor;
-
-// 일반 스크립트 (DB 접근 불가)
-ScriptOutput output = secureExecutor.executeSecure("script-name", script, input);
-
-// DB 연동 스크립트 (DB 접근 허용)
-ScriptOutput dbOutput = secureExecutor.executeSecureWithDb("db-script", script, input);
-
-if (!output.isSuccess()) {
-    // Security violation 또는 에러
-    log.error("Failed: {}", output.getErrorMessage());
-}
-```
-
-### ExecutionOptions (선택적 보안 완화)
-
-기본적으로 모든 위험 작업이 차단되지만, `ExecutionOptions`를 사용하여 필요한 기능을 선택적으로 허용할 수 있습니다.
-
-#### 옵션 목록
-
-| 옵션 | 기본값 | 설명 |
-|------|--------|------|
-| `allowDb` | false | DB 접근 허용 |
-| `allowFileAccess` | false | 파일 시스템 접근 허용 |
-| `allowNetworkAccess` | false | 네트워크 접근 허용 |
-| `allowThreadAccess` | false | Thread 접근 허용 |
-| `allowReflection` | false | 리플렉션 허용 |
-| `allowSystemAccess` | false | System 클래스 접근 허용 |
-| `allowProcessExecution` | false | 프로세스 실행 허용 |
-
-#### 사용 방법
-
-```java
-// 기본 옵션 (모든 위험 작업 차단)
-ExecutionOptions defaults = ExecutionOptions.defaults();
-
-// DB 접근만 허용
-ExecutionOptions withDb = ExecutionOptions.withDb();
-
-// 모든 작업 허용 (주의: 보안 위험)
-ExecutionOptions allowAll = ExecutionOptions.allowAll();
-
-// 커스텀 옵션 (Builder 패턴)
-ExecutionOptions custom = ExecutionOptions.builder()
-    .allowDb(true)
-    .allowFileAccess(true)
-    .allowNetworkAccess(false)
-    .build();
-
-// 옵션을 사용한 실행
-ScriptOutput output = secureExecutor.executeSecure(
-    "script-name", script, input, custom
-);
-```
-
-#### 항상 차단되는 패턴
-
-`allowAll()`을 사용해도 다음은 항상 차단됩니다:
-
-- `@Grab` (외부 의존성 로딩)
-- `GroovyShell` (동적 스크립트 실행)
-- `GroovyClassLoader` (동적 클래스 로딩)
-- `Eval` (동적 평가)
-
 ### 주의사항
 
 > **SecureASTCustomizer 한계**: 정적 분석 기반이므로 동적 우회 가능성 존재.
@@ -374,7 +337,7 @@ ScriptOutput output = secureExecutor.executeSecure(
 
 ---
 
-## 6. 테스트 실행
+## 7. 테스트 실행
 
 ```bash
 # 전체 테스트
@@ -390,7 +353,7 @@ ScriptOutput output = secureExecutor.executeSecure(
 
 ---
 
-## 7. 빌드 및 실행
+## 8. 빌드 및 실행
 
 ```bash
 # 빌드
