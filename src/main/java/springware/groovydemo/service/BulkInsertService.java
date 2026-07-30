@@ -3,7 +3,7 @@ package springware.groovydemo.service;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import springware.groovydemo.dto.Product;
+import springware.groovydemo.dto.DemoProduct;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -39,7 +39,7 @@ public class BulkInsertService {
      */
     @Transactional
     public BulkInsertResult bulkInsertFromCsv(InputStream inputStream, int batchSize) throws IOException {
-        List<Product> products = parseCsv(inputStream);
+        List<DemoProduct> products = parseCsv(inputStream);
         return bulkInsert(products, batchSize);
     }
 
@@ -47,14 +47,14 @@ public class BulkInsertService {
      * Bulk insert products with batch processing
      */
     @Transactional
-    public BulkInsertResult bulkInsert(List<Product> products, int batchSize) {
+    public BulkInsertResult bulkInsert(List<DemoProduct> products, int batchSize) {
         long startTime = System.currentTimeMillis();
         int totalInserted = 0;
         int batchCount = 0;
 
-        List<Product> batch = new ArrayList<>(batchSize);
+        List<DemoProduct> batch = new ArrayList<>(batchSize);
 
-        for (Product product : products) {
+        for (DemoProduct product : products) {
             batch.add(product);
 
             if (batch.size() >= batchSize) {
@@ -80,7 +80,7 @@ public class BulkInsertService {
     /**
      * Insert a batch of products using JdbcTemplate batchUpdate
      */
-    private void insertBatch(List<Product> batch) {
+    private void insertBatch(List<DemoProduct> batch) {
         jdbcTemplate.batchUpdate(INSERT_SQL, batch, batch.size(),
             (ps, product) -> {
                 ps.setString(1, product.getCode());
@@ -95,8 +95,8 @@ public class BulkInsertService {
      * Parse CSV file to Product list
      * Expected format: code,name,price,quantity,category
      */
-    private List<Product> parseCsv(InputStream inputStream) throws IOException {
-        List<Product> products = new ArrayList<>();
+    private List<DemoProduct> parseCsv(InputStream inputStream) throws IOException {
+        List<DemoProduct> products = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
@@ -117,7 +117,7 @@ public class BulkInsertService {
 
                 String[] fields = line.split(",");
                 if (fields.length >= 5) {
-                    Product product = new Product(
+                    DemoProduct product = new DemoProduct(
                         fields[0].trim(),                          // code
                         fields[1].trim(),                          // name
                         new BigDecimal(fields[2].trim()),          // price

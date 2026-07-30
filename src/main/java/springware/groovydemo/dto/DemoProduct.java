@@ -2,7 +2,7 @@ package springware.groovydemo.dto;
 
 import java.math.BigDecimal;
 
-public class Product {
+public class DemoProduct {
 
     private Long id;
     private String code;
@@ -11,10 +11,10 @@ public class Product {
     private int quantity;
     private String category;
 
-    public Product() {
+    public DemoProduct() {
     }
 
-    public Product(String code, String name, BigDecimal price, int quantity, String category) {
+    public DemoProduct(String code, String name, BigDecimal price, int quantity, String category) {
         this.code = code;
         this.name = name;
         this.price = price;

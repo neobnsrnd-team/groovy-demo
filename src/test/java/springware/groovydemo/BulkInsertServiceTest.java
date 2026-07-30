@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
-import springware.groovydemo.dto.Product;
+import springware.groovydemo.dto.DemoProduct;
 import springware.groovydemo.service.BulkInsertService;
 import springware.groovydemo.service.BulkInsertService.BulkInsertResult;
 
@@ -50,7 +50,7 @@ class BulkInsertServiceTest {
     @Test
     @DisplayName("10,000건 Bulk Insert - Batch Size 1000")
     void testBulkInsert_10000Records_BatchSize1000() {
-        List<Product> products = generateProducts(10_000);
+        List<DemoProduct> products = generateProducts(10_000);
 
         BulkInsertResult result = bulkInsertService.bulkInsert(products, 1000);
 
@@ -64,7 +64,7 @@ class BulkInsertServiceTest {
     @Test
     @DisplayName("50,000건 Bulk Insert - Batch Size 1000")
     void testBulkInsert_50000Records_BatchSize1000() {
-        List<Product> products = generateProducts(50_000);
+        List<DemoProduct> products = generateProducts(50_000);
 
         BulkInsertResult result = bulkInsertService.bulkInsert(products, 1000);
 
@@ -90,7 +90,7 @@ class BulkInsertServiceTest {
 
         for (int batchSize : batchSizes) {
             bulkInsertService.clearAll();
-            List<Product> products = generateProducts(totalRecords);
+            List<DemoProduct> products = generateProducts(totalRecords);
 
             BulkInsertResult result = bulkInsertService.bulkInsert(products, batchSize);
 
@@ -144,12 +144,12 @@ class BulkInsertServiceTest {
 
         // Single insert (batch size = 1)
         bulkInsertService.clearAll();
-        List<Product> products1 = generateProducts(totalRecords);
+        List<DemoProduct> products1 = generateProducts(totalRecords);
         BulkInsertResult singleResult = bulkInsertService.bulkInsert(products1, 1);
 
         // Batch insert (batch size = 1000)
         bulkInsertService.clearAll();
-        List<Product> products2 = generateProducts(totalRecords);
+        List<DemoProduct> products2 = generateProducts(totalRecords);
         BulkInsertResult batchResult = bulkInsertService.bulkInsert(products2, 1000);
 
         double speedup = (double) singleResult.durationMs() / batchResult.durationMs();
@@ -171,13 +171,13 @@ class BulkInsertServiceTest {
             "Batch insert should be faster than single insert");
     }
 
-    private List<Product> generateProducts(int count) {
-        List<Product> products = new ArrayList<>(count);
+    private List<DemoProduct> generateProducts(int count) {
+        List<DemoProduct> products = new ArrayList<>(count);
         String[] categories = {"Electronics", "Furniture", "Accessories", "Lighting", "Office"};
         Random random = new Random(42);
 
         for (int i = 1; i <= count; i++) {
-            Product product = new Product(
+            DemoProduct product = new DemoProduct(
                 "PROD-" + String.format("%06d", i),
                 "Product Name " + i,
                 BigDecimal.valueOf(10 + random.nextDouble() * 990).setScale(2, java.math.RoundingMode.HALF_UP),

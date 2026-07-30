@@ -1,9 +1,14 @@
 package springware.groovydemo.dto;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public class ScriptOutput {
+
+    private static final Logger log = LoggerFactory.getLogger(ScriptOutput.class);
 
     private boolean success;
     private Object result;
@@ -11,6 +16,7 @@ public class ScriptOutput {
     private Map<String, Object> data = new HashMap<>();
 
     public ScriptOutput() {
+        log.info(">>> ScriptOutput CREATED - instance: {}", System.identityHashCode(this));
     }
 
     public static ScriptOutput success(Object result) {
